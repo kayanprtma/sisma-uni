@@ -5,31 +5,56 @@ import { supabase } from "../lib/supabase";
 
 export default function Register() {
   const router = useRouter();
+  const [nama, setNama] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const signUpWithEmail = async () => {
     setLoading(true);
-    const { data, error } = await supabase.auth.signUp({ email, password });
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
 
     if (error) {
       Alert.alert("Pendaftaran Gagal", error.message);
-    } else if (!data.session) {
+    } else {
+      const user = data.user;
+
+      // Insert nama ke tabel profiles (dengan upsert agar fleksibel)
+      if (user?.id) {
+        const { error: profileError } = await supabase.from("profiles").upsert({
+          id: user.id,
+          nama: nama,
+        });
+
+        if (profileError) {
+          Alert.alert("Gagal Menyimpan Nama", profileError.message);
+        }
+      }
+
       Alert.alert(
         "Pendaftaran Berhasil",
-        "Cek email kamu untuk verifikasi akun."
+        "Silakan cek email kamu untuk verifikasi akun."
       );
-    } else {
-      Alert.alert("Berhasil", "Akun berhasil dibuat!");
-      router.replace("./Login");
+      router.replace("/Login");
     }
+
     setLoading(false);
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Daftar Akun</Text>
+
+      <TextInput
+        style={styles.input}
+        placeholder="Nama Lengkap"
+        onChangeText={setNama}
+        value={nama}
+      />
       <TextInput
         style={styles.input}
         placeholder="Email"
@@ -51,6 +76,7 @@ export default function Register() {
         onPress={signUpWithEmail}
         disabled={loading}
       />
+
       <View style={styles.registerLink}>
         <Text style={styles.marginBottom}>Sudah punya akun?</Text>
         <Button title="Login" onPress={() => router.push("/Login")} />
